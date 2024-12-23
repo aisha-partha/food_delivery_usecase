@@ -1,0 +1,110 @@
+# Package Overview
+package_name: model
+
+# Data Files
+training_data_file: train.csv
+test_data_file: test.csv
+
+# Variables
+# The variable we are attempting to predict (Survival)
+target: 
+
+pipeline_name: bank_pipe
+pipeline_save_file: bank__model_output_v
+
+features:      # final features to be use
+
+  - customer_id
+  - credit_score
+  - country
+  - gender
+  - age
+  - tenure
+  - balance
+  - products_number
+  - credit_card
+  - active_member
+  - estimated_salary
+  
+# Features inside processing pipeline
+
+cols_delete: 
+  - customer_id
+
+age_binner: 
+  - age
+age_bins:
+  - 17
+  - 40
+  - 60
+  - 100
+age_bin_labels:
+  - A
+  - B
+  - C
+
+mapping_dict:
+  products_number:
+    1: 1
+    2: 2
+    3: 3
+    4: 3
+       
+num_cols:
+  - credit_score
+
+balance_binner: 
+  - balance
+bal_bins:
+  - -1
+  - 50000
+  - 100000
+  - 150000
+  - 200000
+  - 10000000000 # Big number instead of np.inf
+bal_bin_labels:
+  - A
+  - B
+  - C
+  - D
+  - E
+
+tenure_binner: 
+  - tenure
+ten_bins:
+  - -1
+  - 2
+  - 4
+  - 6
+  - 8
+  - 100 # Big number instead of np.inf
+ten_bin_labels:
+  - A
+  - B
+  - C
+  - D
+  - E
+
+onehot_cols:
+  - country
+  - gender
+
+label_cols:
+  - age_binned
+  - balance_binned
+  - tenure_binned
+
+  
+# set train/test split
+test_size: 0.20
+
+# to set the random seed
+random_state: 42
+
+# alogrithm parameters
+n_estimators: 500
+max_depth: 10
+learning_rate: 0.05
+loss_function: Logloss
+auto_class_weights: Balanced
+verbose: 0
