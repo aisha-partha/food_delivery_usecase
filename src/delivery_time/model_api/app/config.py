@@ -1,7 +1,9 @@
 import sys
 from typing import List
 
-from pydantic import AnyHttpUrl, BaseSettings
+from pydantic import AnyHttpUrl
+from pydantic_settings import BaseSettings
+
 
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
@@ -17,7 +19,7 @@ class Settings(BaseSettings):
         "https://localhost:8000",  # type: ignore
     ]
 
-    PROJECT_NAME: str = "Bank Customer Churn Prediction API"
+    PROJECT_NAME: str = "Driver Delivery time Prediction API"
 
     class Config:
         case_sensitive = True

@@ -4,7 +4,6 @@ file = Path(__file__).resolve()
 parent, root = file.parent, file.parents[1]
 sys.path.append(str(root))
 
-
-from model.config.core import PACKAGE_ROOT, config
+from delivery_time_model.config.core import PACKAGE_ROOT, config
 with open(PACKAGE_ROOT / "VERSION") as version_file:
     __version__ = version_file.read().strip()

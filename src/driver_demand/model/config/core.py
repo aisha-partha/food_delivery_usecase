@@ -5,18 +5,19 @@ file = Path(__file__).resolve()
 parent, root = file.parent, file.parents[1]
 sys.path.append(str(root))
 
+from pathlib import Path
 from typing import Dict, List
+
 from pydantic import BaseModel
 from strictyaml import YAML, load
 
-import model
+import delivery_time_model
 
 # Project Directories
-PACKAGE_ROOT = Path(model.__file__).resolve().parent
-#print(PACKAGE_ROOT)
+PACKAGE_ROOT = Path(delivery_time_model.__file__).resolve().parent
 ROOT = PACKAGE_ROOT.parent
 CONFIG_FILE_PATH = PACKAGE_ROOT / "config.yml"
-#print(CONFIG_FILE_PATH)
+# print(CONFIG_FILE_PATH)
 
 DATASET_DIR = PACKAGE_ROOT / "datasets"
 TRAINED_MODEL_DIR = PACKAGE_ROOT / "trained_models"
@@ -29,8 +30,11 @@ class AppConfig(BaseModel):
 
     package_name: str
     training_data_file: str
-    test_data_file: str
+    testing_data_file: str
+    pipeline_name: str
     pipeline_save_file: str
+    registered_model_name: str
+    mlflow_tracking_uri: str
 
 
 class ModelConfig(BaseModel):
@@ -38,50 +42,66 @@ class ModelConfig(BaseModel):
     All configuration relevant to model
     training and feature engineering.
     """
+
     target: str
     features: List[str]
+    unused_fields: List[str]
     
-    cols_delete: List[str]
+    Delivery_person_Age_var: str
+    Delivery_person_Ratings_var: str
+    Restaurant_latitude_var: str
+    Restaurant_longitude_var: str
+    Delivery_location_latitude_var: str
+    Delivery_location_longitude_var: str
+    Weatherconditions_var: str
+    Road_traffic_density_var: str
+    Vehicle_condition_var: str
+    Type_of_order_var: str
+    Type_of_vehicle_var: str
+    multiple_deliveries_var: str
+    Festival_var: str
+    City_area_var: str
+    City_var: str
+    day_of_week_var : str
+    is_weekend_var : str
+    quarter_var : str
+    yr_var: str
+    mnth_var: str
+    Distance_var: str
+    order_prepare_time_var : str
+        
+    weather_mappings: Dict[str, int]
+    traff_den_mappings: Dict[str, int]
+    order_type_mappings: Dict[str, int]
+    vehicle_mappings: Dict[str, int]
+    festival_mappings: Dict[str, int]
+    city_area_mappings: Dict[str, int]
+    # city_mappings: Dict[str, int]
+    # yr_mappings: Dict[str, int]
+    mnth_mappings: Dict[str, int]
     
-    age_binner: List[str]
-    age_bins: List[int]
-    age_bin_labels: List[str]
-    
-    mapping_dict: Dict[str, Dict[int, int]]
-    
-    num_cols: List[str]
-    
-    balance_binner: List[str]
-    bal_bins: List[int]
-    bal_bin_labels: List[str]
-    
-    tenure_binner: List[str]
-    ten_bins: List[int]
-    ten_bin_labels: List[str]
-    
-    onehot_cols: List[str]
-    label_cols: List[str]
-  
     test_size:float
     random_state: int
-    n_estimators: int
-    max_depth: int
-    learning_rate: float
-    loss_function: str
-    auto_class_weights: str
-    verbose: int
+    # n_estimators: int
+    # max_depth: int
+    # learning_rate: float
+    # colsample_bytree: float
+    # subsample: float
+
 
 class Config(BaseModel):
     """Master config object."""
 
     app_config: AppConfig
-    modl_config: ModelConfig
+    ml_config: ModelConfig
 
 
 def find_config_file() -> Path:
     """Locate the configuration file."""
+    
     if CONFIG_FILE_PATH.is_file():
         return CONFIG_FILE_PATH
+    
     raise Exception(f"Config not found at {CONFIG_FILE_PATH!r}")
 
 
@@ -95,6 +115,7 @@ def fetch_config_from_yaml(cfg_path: Path = None) -> YAML:
         with open(cfg_path, "r") as conf_file:
             parsed_config = load(conf_file.read())
             return parsed_config
+        
     raise OSError(f"Did not find config file at path: {cfg_path}")
 
 
@@ -105,8 +126,8 @@ def create_and_validate_config(parsed_config: YAML = None) -> Config:
 
     # specify the data attribute from the strictyaml YAML type.
     _config = Config(
-        app_config=AppConfig(**parsed_config.data),
-        modl_config=ModelConfig(**parsed_config.data),
+        app_config = AppConfig(**parsed_config.data),
+        ml_config = ModelConfig(**parsed_config.data),
     )
 
     return _config

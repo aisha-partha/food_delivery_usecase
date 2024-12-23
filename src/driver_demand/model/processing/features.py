@@ -2,62 +2,65 @@ from typing import List
 import sys
 import pandas as pd
 import numpy as np
+
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import OneHotEncoder
 
 
-class ColumnDropper(BaseEstimator, TransformerMixin):
+class WeekdayImputer(BaseEstimator, TransformerMixin):
+    """ Impute missing values in 'weekday' column by extracting dayname from 'dteday' column """
 
-    def __init__(self, col_list: list):
+    def __init__(self, variable: str, date_var:str):
 
-        if not isinstance(col_list, list):
-            raise ValueError("Columns should be a list of strings")
+        if not isinstance(variable, str):
+            raise ValueError("variable name should be a string")
+        if not isinstance(date_var, str):
+            raise ValueError("date variable name should be a string")
 
-        self.col_list = col_list
+        self.variable = variable
+        self.date_var = date_var
 
-    def fit(self, dataframe = pd.DataFrame, target: pd.Series = None):
+    def fit(self, X: pd.DataFrame, y: pd.Series = None):
+        # we need the fit statement to accomodate the sklearn pipeline
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        X = X.copy()
+        # convert 'dteday' column to Datetime datatype
+        X[self.date_var] = pd.to_datetime(X[self.date_var], format='%Y-%m-%d')
+        
+        wkday_null_idx = X[X[self.variable].isnull() == True].index
+        X.loc[wkday_null_idx, self.variable] = X.loc[wkday_null_idx, self.date_var].dt.day_name().apply(lambda x: x[:3])
+
+        # drop 'dteday' column after imputation
+        X.drop(self.date_var, axis=1, inplace=True)
+
+        return X
+
+
+class WeathersitImputer(BaseEstimator, TransformerMixin):
+    """ Impute missing values in 'weathersit' column by replacing them with the most frequent category value """
+
+    def __init__(self, variable: str):
+
+        if not isinstance(variable, str):
+            raise ValueError("variable name should be a string")
+
+        self.variable = variable
+
+    def fit(self, X: pd.DataFrame, y: pd.Series = None):
+        # we need the fit statement to accomodate the sklearn pipeline 
+        X = X.copy()
+        self.fill_value = X[self.variable].mode()[0]
 
         return self
 
-    def transform(self, dataframe = pd.DataFrame, target: pd.Series = None):
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        X = X.copy()
+        X[self.variable] = X[self.variable].fillna(self.fill_value)
 
-        df = dataframe.copy()
-        df.drop(columns=self.col_list,inplace=True)
+        return X    
 
-        return df
-    
-class Binner(BaseEstimator, TransformerMixin):
-    
-    def __init__(self, col_list:list, bins:list, labels:list):
-
-        if not isinstance(col_list, list):
-            raise ValueError("Columns should be a list of strings")
-            
-        if not isinstance(bins, list):
-            raise ValueError("Bins should be a list of integers")
-
-        if not isinstance(labels, list):
-            raise ValueError("Bins should be a list of strings")
-        
-        if bins is not None and labels is not None and len(bins) != len(labels) + 1:
-            raise ValueError("Length of bins must be one more than the length of labels.")
-            
-        self.col_list = col_list
-        self.bins = bins
-        self.labels = labels        
-    
-    def fit(self, dataframe: pd.DataFrame, target: pd.Series = None):
-
-        return self
-    
-    def transform(self, dataframe: pd.DataFrame):
-        df =  dataframe.copy()
-        
-        for col in self.col_list:
-            df[f"{col}_binned"] = pd.cut(df[col], bins=self.bins, labels=self.labels, right=False)
-            
-        return df
-    
 
 class Mapper(BaseEstimator, TransformerMixin):
     """
@@ -65,139 +68,91 @@ class Mapper(BaseEstimator, TransformerMixin):
     Treat column as Ordinal categorical variable, and assign values accordingly
     """
 
-    def __init__(self, col_map: dict):
+    def __init__(self, variable:str, mappings:dict):
 
-        if not isinstance(col_map, dict):
-            raise ValueError("Mappings should be a dictionary of col, strings pair")
-        self.col_map = col_map
+        if not isinstance(variable, str):
+            raise ValueError("variable name should be a string")
 
-    def fit(self, dataframe: pd.DataFrame, target: pd.Series = None):
+        self.variable = variable
+        self.mappings = mappings
 
+    def fit(self, X: pd.DataFrame, y: pd.Series = None):
+        # we need the fit statement to accomodate the sklearn pipeline
         return self
 
-    def transform(self, dataframe: pd.DataFrame):
-        
-        df = dataframe.copy()
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        X = X.copy()
+        X[self.variable] = X[self.variable].map(self.mappings).astype(int)
 
-        for key, val in self.col_map.items():
-            df[key] = df[key].map(val)
+        return X
 
-        return df
-    
-    
+
 class OutlierHandler(BaseEstimator, TransformerMixin):
     """
-    Change the outlier values:
+    Change the outlier values: 
         - to upper-bound, if the value is higher than upper-bound, or
         - to lower-bound, if the value is lower than lower-bound respectively.
     """
 
-    def __init__(self, col_list: list):
+    def __init__(self, variable:str):
 
-        if not isinstance(col_list, list):
-            raise ValueError("Columns should be a list of strings")
-        self.col_list = col_list
-        self.limit_dict = {}
+        if not isinstance(variable, str):
+            raise ValueError("variable name should be a string")
 
-    def fit(self, dataframe: pd.DataFrame, target: pd.Series = None):
+        self.variable = variable
 
-        df = dataframe.copy()
-        # limit_dict = {}
-
-        for col in self.col_list:
-
-            q1 = df.describe()[col].loc['25%']
-            q3 = df.describe()[col].loc['75%']
-            iqr = q3 - q1
-            lower_bound = int(q1 - (1.5 * iqr))
-            upper_bound = int(q3 + (1.5 * iqr))
-            self.limit_dict[col] = [lower_bound, upper_bound]
-
-        self.limits = self.limit_dict
+    def fit(self, X: pd.DataFrame, y: pd.Series = None):
+        # we need the fit statement to accomodate the sklearn pipeline
+        X = X.copy()
+        q1 = X.describe()[self.variable].loc['25%']
+        q3 = X.describe()[self.variable].loc['75%']
+        iqr = q3 - q1
+        self.lower_bound = q1 - (1.5 * iqr)
+        self.upper_bound = q3 + (1.5 * iqr)
+        
         return self
 
-
-    def transform(self, dataframe: pd.DataFrame):
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        X = X.copy()
         
-        df = dataframe.copy()
+        for i in X.index:
+            if X.loc[i, self.variable] > self.upper_bound:
+                X.loc[i, self.variable]= self.upper_bound
+            if X.loc[i, self.variable] < self.lower_bound:
+                X.loc[i, self.variable]= self.lower_bound
 
-        for col in self.col_list:
-            for i in df.index:
+        return X
 
-                if df.loc[i,col] > self.limits[col][1]:
-                    df.loc[i,col]= self.limits[col][1]
 
-                if df.loc[i,col] < self.limits[col][0]:
-                    df.loc[i,col]= self.limits[col][0]
+class WeekdayOneHotEncoder(BaseEstimator, TransformerMixin):
+    """ One-hot encode weekday column """
 
-        return df
-    
+    def __init__(self, variable:str):
 
-class ColOneHotEncoder(BaseEstimator, TransformerMixin):
-    """ One-hot encode a column """
+        if not isinstance(variable, str):
+            raise ValueError("variable name should be a string")
 
-    def __init__(self, col_list: list):
+        self.variable = variable
+        self.encoder = OneHotEncoder(sparse_output=False)
 
-        if not isinstance(col_list, list):
-            raise ValueError("Columns should be a list of strings")
-
-        self.col_list = col_list
-        self.categories_ = {}
-
-    def fit(self, dataframe: pd.DataFrame, target: pd.Series = None):
-
-        df = dataframe.copy()
-        for col in self.col_list:
-            self.categories_[col] = df[col].unique()
-            self.categories_[col] = [col for col in self.categories_[col] if str(col) != 'nan']
-
+    def fit(self, X: pd.DataFrame, y: pd.Series = None):
+        # we need the fit statement to accomodate the sklearn pipeline
+        X = X.copy()
+        self.encoder.fit(X[[self.variable]])
+        # Get encoded feature names
+        self.encoded_features_names = self.encoder.get_feature_names_out([self.variable])
+        
         return self
 
-    def transform(self, dataframe: pd.DataFrame):
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        X = X.copy()
         
-        if not self.categories_:
-            raise ValueError("Must fit the transformer before transforming the data.")
+        encoded_weekdays = self.encoder.transform(X[[self.variable]])
+        # Append encoded weekday features to X
+        X[self.encoded_features_names] = encoded_weekdays
 
-        df = dataframe.copy()
-        for col in self.col_list:
-            categories = self.categories_[col]
-            for category in categories:
-                new_column_name = f"{col}_{category}"
-                df[new_column_name] = (df[col] == category).astype(int)
-            df = df.drop(col, axis=1)
+        # drop 'weekday' column after encoding
+        X.drop(self.variable, axis=1, inplace=True)        
 
-        return df
+        return X
 
-class ColLabelEncoder(BaseEstimator, TransformerMixin):
-    """ One-hot encode a column """
-
-    def __init__(self, col_list: list):
-
-        if not isinstance(col_list, list):
-            raise ValueError("Columns should be a list of strings")
-
-        self.col_list = col_list
-        self.encoders = {}
-
-    def fit(self, dataframe: pd.DataFrame, target: pd.Series = None):
-
-        df = dataframe.copy()
-        for column in self.col_list:
-            
-            le = LabelEncoder()
-            le.fit(df[column])
-            self.encoders[column] = le
-            
-        return self
-
-    def transform(self, dataframe: pd.DataFrame):
-        
-        if not self.encoders:
-            raise ValueError("Must fit the transformer before transforming the data.")
-
-        df = dataframe.copy()
-
-        for column, le in self.encoders.items():
-            df[column] = le.transform(df[column])
-            
-        return df
