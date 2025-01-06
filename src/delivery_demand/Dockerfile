@@ -14,6 +14,5 @@ RUN pip install -r requirements.txt
 
 EXPOSE 8503
 
-HEALTHCHECK CMD curl --fail http://localhost:8503/_stcore/health
 
-ENTRYPOINT ["streamlit", "run", "demand_prediction.py", "--server.port=8503", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "demand_prediction.py", "--server.port=8503", "--server.address=0.0.0.0"]
