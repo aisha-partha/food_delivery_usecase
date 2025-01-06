@@ -23,6 +23,8 @@ user = os.environ['USER']
 password = os.environ['PASSWORD']
 database = os.environ['DATABASE']
 
+fast_api_url = os.environ['FAST_API_APP_URL']
+
 
 
 db = mysql.connector.connect(
@@ -392,7 +394,8 @@ def predict_delivery_time(rest_id, city, delivery_lat, delivery_long):
 																		
     data = { "inputs" : data_in } 
     try:
-        r = requests.post(url = "http://localhost:8001/api/v1/predict", data = json.dumps(data))
+        #r = requests.post(url = "http://localhost:8001/api/v1/predict", data = json.dumps(data))
+        r = requests.post(url = fast_api_url, data = json.dumps(data))
         r = r.json()
         print(r)
         return r['predictions']
