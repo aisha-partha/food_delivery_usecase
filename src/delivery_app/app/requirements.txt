@@ -1,0 +1,6 @@
+streamlit==1.41.1
+mysql-connector-python
+altair==4
+
+requests>2.23.0,<=2.31.0
+holidays
